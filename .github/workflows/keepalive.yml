@@ -82,6 +82,8 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        # Fails the job (and notifies) if nothing has landed in 6 hours, which
-        # at a 30-minute cadence means roughly 12 consecutive missed cycles.
-        run: python main.py healthcheck --max-age-hours 6
+        # Fails the job (and notifies) if nothing has landed in 12 hours.
+        # The threshold was 6 hours, but GitHub's scheduler is best-effort and
+        # routinely leaves gaps longer than that between collection runs, so
+        # the alarm fired every week on a pipeline that was still alive.
+        run: python main.py healthcheck --max-age-hours 12
