@@ -1,0 +1,3 @@
+# Test-only dependencies. The collector itself needs only requirements.txt.
+-r requirements.txt
+pytest>=8,<9
