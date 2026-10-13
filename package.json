@@ -1,0 +1,12 @@
+{
+  "name": "dar-traffic-monitoring-site",
+  "private": true,
+  "type": "module",
+  "description": "Concept page for the Dar es Salaam traffic monitoring pipeline. The site has no runtime dependencies.",
+  "scripts": {
+    "build": "node tools/build-points.mjs",
+    "check": "node tools/build-points.mjs --check",
+    "test": "node --test \"test/*.test.mjs\"",
+    "serve": "node tools/serve.cjs site 4320 /Dar-Traffic-Monitoring/"
+  }
+}
