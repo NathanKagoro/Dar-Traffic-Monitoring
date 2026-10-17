@@ -2,9 +2,9 @@
 
 **Concept page: https://nathankagoro.github.io/Dar-Traffic-Monitoring/**
 
-A lightweight, Python-based traffic data collection pipeline for East African
-urban monitoring. Collects traffic data from the TomTom API for 52 strategic
-monitoring points, scheduled every 30 minutes. GitHub's scheduler is
+A small Python pipeline that records traffic speed in East African cities. It
+asks the TomTom API for a reading at each of 52 monitoring points, on a
+30-minute schedule. GitHub's scheduler is
 best-effort, so the real interval between runs is longer and uneven.
 
 ## The concept page
@@ -293,8 +293,8 @@ ORDER BY avg_speed ASC;
 ## Keeping Collection Alive
 
 GitHub **automatically disables scheduled workflows in a public repository
-after 60 days with no repository activity**, and it does so silently — no run
-fails, no job errors, the schedule simply stops firing. This is what stopped
+after 60 days with no repository activity**, and it does so silently: no run
+fails, no job errors, the schedule just stops firing. This is what stopped
 collection in July 2026, 60 days after the last commit on 2026-05-10.
 
 `.github/workflows/keepalive.yml` prevents a repeat. Weekly, it:
@@ -304,7 +304,7 @@ collection in July 2026, 60 days after the last commit on 2026-05-10.
 2. Calls the Actions API to re-enable `collect-traffic.yml`, so the pipeline
    recovers by itself if it is ever disabled anyway.
 3. Runs `python main.py healthcheck`, which **fails the job** if no new rows
-   have landed in 12 hours — turning a silent death into a notification. (It
+   have landed in 12 hours, so a silent stop shows up as a failed run. (It
    was 6 hours, but scheduled runs are routinely further apart than that, so
    the alarm fired on a healthy pipeline.)
 
@@ -371,11 +371,11 @@ stronger evidence.
 
 `audit` checks three things that fail independently:
 
-- **Coverage** — how many of the expected collection cycles actually ran, where
+- **Coverage:** how many of the expected collection cycles actually ran, where
   the gaps are, and which points went missing from cycles.
-- **Integrity** — nulls, out-of-range congestion ratios, `current_speed` above
+- **Integrity:** nulls, out-of-range congestion ratios, `current_speed` above
   `free_flow_speed`, duplicate rows, points whose coordinates changed.
-- **Signal** — whether the numbers actually move with real traffic. A feed can
+- **Signal:** whether the numbers actually move with real traffic. A feed can
   be 100% complete and still worthless. The audit flags points whose speed
   never changes, points pinned at free-flow, and reports the **rush-hour lift**
   (mean congestion at 07/08/17/18 local minus 00–04 local). A clearly positive
@@ -408,7 +408,7 @@ SUPABASE_KEY=...
 
 **API Costs**
 - TomTom free tier: 2,500 requests/day
-- Current usage: **2,496 requests/day — 99.8% of the daily quota**
+- Current usage: **2,496 requests/day, 99.8% of the daily quota**
 - Supabase: Free tier (adequate)
 
 > **The API budget has no headroom.** 52 points x 48 cycles leaves 4 spare
@@ -500,7 +500,7 @@ response onto the existing snapshot fields and the storage layer is unchanged.
 UDSM and international urban mobility research teams (World Bank, UN-Habitat) have published Dar es Salaam traffic datasets:
 - Manual traffic counts at strategic intersections
 - Could seed a local database
-- Combine with progressive real-time collection infrastructure
+- Add real-time collection on top once a live source exists
 
 ### Option 4: Expand to Other East African Cities
 
@@ -535,7 +535,7 @@ Once the pipeline is stable (2-4 weeks of data):
 GitHub disabled the scheduled workflow after 60 days of repository inactivity.
 Check the **Actions** tab for a banner on **Collect Traffic Data** and click
 **Enable workflow**, then push a commit. See
-[Keeping Collection Alive](#keeping-collection-alive) — the keepalive workflow
+[Keeping Collection Alive](#keeping-collection-alive). The keepalive workflow
 exists to stop this recurring.
 
 Also check Supabase: free-tier projects pause after ~7 days of inactivity, so a

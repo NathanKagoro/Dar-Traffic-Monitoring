@@ -2,7 +2,7 @@
 
 Thank you for helping improve this project.
 
-This repository is designed so contributors can replicate the pipeline for other cities when traffic coverage is available from the selected provider.
+This repository is set up so contributors can replicate the pipeline for other cities when traffic coverage is available from the selected provider.
 
 ## What You Can Contribute
 
@@ -123,7 +123,7 @@ Implementation suggestion:
 
 ## 4) Add Weather Tracking
 
-Weather context is highly valuable for congestion analysis.
+Weather helps explain congestion, so it is worth recording next to each reading.
 
 Useful variables per timestamp and point:
 
@@ -170,7 +170,7 @@ Before submitting:
 
 ## Good Next Contributions
 
-If you want more ideas, these are high-impact:
+If you want more ideas, these would help most:
 
 1. ~~City template generator for monitored_points.json~~ - done, see
    `analysis/generate_points.py`.
@@ -181,4 +181,4 @@ If you want more ideas, these are high-impact:
 4. Simple dashboard notebook for daily congestion trends.
 5. Automated anomaly flags for sudden speed drops.
 
-Open an issue first for larger feature work so we can align on approach before implementation.
+Open an issue first for larger feature work so we can agree on the approach before you build it.

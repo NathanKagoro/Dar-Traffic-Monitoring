@@ -22,7 +22,7 @@ class DatabaseManager:
             supabase_url: Supabase project URL (https://xxxxx.supabase.co)
             supabase_key: Supabase service_role key
         """
-        # Normalise URL — strip trailing slash
+        # Normalise URL: strip trailing slash
         self.base_url = supabase_url.rstrip("/")
         self.supabase_key = supabase_key
         self.headers = {
@@ -43,7 +43,7 @@ class DatabaseManager:
         try:
             url = f"{self.base_url}/rest/v1/traffic_snapshots?limit=1"
             response = requests.get(url, headers=self.headers, timeout=10)
-            # 200 means table exists, 404 means table missing — both mean API is reachable
+            # 200 means table exists, 404 means table missing; both mean API is reachable
             if response.status_code in (200, 404):
                 logger.info("Supabase REST API reachable")
                 return True
@@ -55,7 +55,7 @@ class DatabaseManager:
 
     # REST transport is stateless, so there is no live connection to tear down.
     def close(self):
-        """No-op — REST API has no persistent connection to close."""
+        """No-op: REST API has no persistent connection to close."""
         pass
 
     # Batch insert snapshots in one request to reduce overhead and partial failures.
