@@ -44,3 +44,7 @@ reports/
 
 # Logs
 *.log
+
+# Node (concept page tooling)
+node_modules/
+screenshots/
