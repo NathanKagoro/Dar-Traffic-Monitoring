@@ -113,7 +113,7 @@ function buildMap(host, { bounds, width, kind, label }) {
     const [x0, y0] = proj.project(inner[0], inner[3]);
     const [x1, y1] = proj.project(inner[2], inner[1]);
     svg('rect', { class: 'm-box', x: fmt(x0), y: fmt(y0), width: fmt(x1 - x0), height: fmt(y1 - y0) }, labels);
-    const t = svg('text', { class: 'm-box-label k-text', x: fmt(x0), y: fmt(y1 + 4), 'dominant-baseline': 'hanging' }, labels);
+    const t = svg('text', { class: 'm-box-label k-text', x: fmt(x1 + 5), y: fmt(y0 + 2), 'dominant-baseline': 'hanging' }, labels);
     t.textContent = name;
   };
   if (kind === 'region') box(CITY_BOUNDS, 'City');
@@ -313,7 +313,7 @@ function renderSlot() {
   scrub.value = String(slot);
   scrub.setAttribute('aria-valuetext', `${slotLabel(slot)} East Africa Time, simulated`);
   if (nowLine) {
-    const x = (slot / (SLOTS_PER_DAY - 1)) * 600;
+    const x = (slot / (SLOTS_PER_DAY - 1)) * deckWidth;
     nowLine.setAttribute('x1', fmt(x));
     nowLine.setAttribute('x2', fmt(x));
   }
@@ -357,6 +357,19 @@ function setPlaying(playing) {
 /* ---------- charts ---------- */
 
 let nowLine = null;
+let deckWidth = 0;
+
+// The day chart is drawn at its real pixel width, so its labels stay legible
+// on a phone without the chart becoming tall on a desktop.
+function mountDeckChart() {
+  const host = $('profile');
+  const width = Math.round(host.clientWidth) || 600;
+  if (width === deckWidth) return;
+  deckWidth = width;
+  host.textContent = '';
+  nowLine = profileChart(host, { W: width, height: 104, withNow: true });
+  renderSlot();
+}
 
 function profileChart(host, { W, height, withNow }) {
   const top = 18;
@@ -487,13 +500,13 @@ buildMap($('map-centre'), {
   bounds: CENTRE_BOUNDS, width: 320, kind: 'centre',
   label: 'Enlarged map of the city centre with its monitoring points',
 });
-nowLine = profileChart($('profile'), { W: 600, height: 92, withNow: true });
 profileChart($('use-profile'), { W: 340, height: 150, withNow: false });
 corridorChart($('use-corridors'));
 buildRoll($('roll'));
 wireRatio();
 
-renderSlot();
+mountDeckChart();
+if ('ResizeObserver' in window) new ResizeObserver(mountDeckChart).observe($('profile'));
 // start with one point selected so the readout shows what a row holds
 select(Math.max(0, POINTS.findIndex((p) => p.name === 'Morogoro Road - Ubungo Municipal')));
 
