@@ -6,9 +6,21 @@
 // not survey data. The monitoring points themselves are exact: they come from
 // config/cities/dar_es_salaam.json. Tests: test/geo.test.mjs.
 
-/** Whole-region view and the city-centre inset, as [west, south, east, north]. */
+/**
+ * Three nested views, each as [west, south, east, north]: the whole region,
+ * the built-up city, and the city centre. A point is drawn as a marker on the
+ * tightest view that contains it.
+ */
 export const REGION_BOUNDS = [38.985, -7.175, 39.6, -6.648];
+export const CITY_BOUNDS = [39.178, -6.885, 39.345, -6.662];
 export const CENTRE_BOUNDS = [39.2615, -6.8335, 39.2975, -6.799];
+
+/** Which view a point's marker belongs on: 'centre', 'city' or 'region'. */
+export function homeView(lon, lat) {
+  if (inBounds(CENTRE_BOUNDS, lon, lat)) return 'centre';
+  if (inBounds(CITY_BOUNDS, lon, lat)) return 'city';
+  return 'region';
+}
 
 /**
  * Equirectangular projection onto a box `width` units wide. Longitude is
@@ -75,7 +87,7 @@ export const LAND = [...COAST, [38.9, -7.2], [38.9, -6.64]];
 export const CORRIDORS = [
   {
     name: 'Morogoro Road',
-    label: [39.105, -6.777],
+    labels: { region: [39.09, -6.768, 'middle'], city: [39.245, -6.8075, 'middle'] },
     line: [
       [39.2835, -6.8175], [39.2688, -6.81201], [39.255, -6.805], [39.215, -6.789],
       [39.17317, -6.78683], [39.13313, -6.79093], [39.08338, -6.79584], [39.03768, -6.79163],
@@ -84,7 +96,7 @@ export const CORRIDORS = [
   },
   {
     name: 'Bagamoyo Road',
-    label: [39.158, -6.715],
+    labels: { city: [39.2185, -6.7115, 'start'] },
     line: [
       [39.2845, -6.812], [39.28013, -6.79253], [39.268, -6.781], [39.25993, -6.77784],
       [39.24, -6.771], [39.22322, -6.75406], [39.21266, -6.72134], [39.20114, -6.68483],
@@ -93,7 +105,7 @@ export const CORRIDORS = [
   },
   {
     name: 'Nyerere Road',
-    label: [39.128, -6.905],
+    labels: { region: [39.115, -6.918, 'middle'], city: [39.222, -6.8455, 'middle'] },
     line: [
       [39.2815, -6.8235], [39.27762, -6.82667], [39.262, -6.838], [39.24759, -6.84327],
       [39.20687, -6.86279], [39.17, -6.878], [39.12, -6.892],
@@ -101,7 +113,7 @@ export const CORRIDORS = [
   },
   {
     name: 'Kilwa Road',
-    label: [39.28, -6.985],
+    labels: { region: [39.278, -7.0, 'start'], city: [39.2745, -6.8765, 'end'] },
     line: [
       [39.2825, -6.8265], [39.28492, -6.83992], [39.28, -6.865], [39.26714, -6.89328],
       [39.27007, -6.91227], [39.268, -6.96], [39.262, -7.05], [39.262, -7.175],
@@ -109,7 +121,8 @@ export const CORRIDORS = [
   },
   {
     name: 'Nelson Mandela Road',
-    label: [39.155, -6.83],
+    short: 'Mandela Road',
+    labels: { city: [39.2185, -6.8205, 'end'] },
     line: [
       [39.215, -6.789], [39.2108, -6.80428], [39.23704, -6.8299], [39.24759, -6.84327],
       [39.27, -6.853], [39.29139, -6.85548],
@@ -120,12 +133,22 @@ export const CORRIDORS = [
 /** The Nyerere Bridge across Kurasini creek, bank to bank. */
 export const BRIDGE = [[39.2995, -6.8575], [39.3082, -6.8612]];
 
-export const PLACES = [
-  { name: 'Indian Ocean', at: [39.44, -6.76], kind: 'water' },
-  { name: 'Kigamboni', at: [39.385, -6.905], kind: 'land' },
-  { name: 'Msasani', at: [39.3, -6.742], kind: 'water-edge' },
-  { name: 'Harbour', at: [39.3125, -6.8425], kind: 'water-edge' },
-];
+/** Place names per view: [name, lon, lat, 'water' | 'land', text anchor]. */
+export const PLACES = {
+  region: [
+    ['Indian Ocean', 39.47, -6.78, 'water', 'middle'],
+    ['Kigamboni', 39.405, -6.925, 'land', 'middle'],
+  ],
+  city: [
+    ['Indian Ocean', 39.318, -6.772, 'water', 'middle'],
+    ['Msasani', 39.297, -6.7405, 'water', 'start'],
+    ['Kigamboni', 39.327, -6.846, 'land', 'middle'],
+  ],
+  centre: [
+    ['Harbour', 39.2962, -6.8292, 'water', 'middle'],
+    ['Ocean', 39.2938, -6.8015, 'water', 'middle'],
+  ],
+};
 
 /** Monitoring points that sit over water on purpose. */
 export function isOverWater(point) {

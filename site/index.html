@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dar es Salaam Traffic Monitoring: a concept briefing</title>
+<meta name="description" content="How a small Python pipeline would sample traffic speed at 52 points on Dar es Salaam's roads, why that data is hard to get, and what it would show. The day on the map is simulated.">
+<meta name="theme-color" content="#17181a">
+<link rel="canonical" href="https://nathankagoro.github.io/Dar-Traffic-Monitoring/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Dar es Salaam Traffic Monitoring">
+<meta property="og:description" content="52 monitoring points, one pipeline, and the reason Dar es Salaam's traffic is hard to measure. A concept briefing with a simulated day.">
+<meta property="og:url" content="https://nathankagoro.github.io/Dar-Traffic-Monitoring/">
+<meta property="og:image" content="https://nathankagoro.github.io/Dar-Traffic-Monitoring/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A green road sign reading Dar es Salaam Traffic Monitoring above a dark map of the city's coast with 52 monitoring points.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Dar es Salaam Traffic Monitoring">
+<meta name="twitter:description" content="52 monitoring points, one pipeline, and the reason Dar es Salaam's traffic is hard to measure.">
+<meta name="twitter:image" content="https://nathankagoro.github.io/Dar-Traffic-Monitoring/og.png">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preload" href="fonts/overpass-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/style.css">
+<link rel="modulepreload" href="js/app.js">
+<link rel="modulepreload" href="js/sim.js">
+<link rel="modulepreload" href="js/geo.js">
+<link rel="modulepreload" href="js/points.js">
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the briefing</a>
+
+<header class="approach">
+  <div class="wrap">
+    <a class="plate-link" href="https://nathankagoro.com">&larr; nathankagoro.com</a>
+
+    <div class="gantry">
+      <div class="gantry__truss" aria-hidden="true"></div>
+      <div class="gantry__signs">
+        <div class="sign sign--hero">
+          <p class="sign__route"><span class="shield">DSM</span> Dar es Salaam Traffic Monitoring</p>
+          <h1>How fast is Dar es Salaam moving, road by road, hour by hour?</h1>
+          <p class="sign__lede">A small Python pipeline built to answer that by sampling traffic speed at 52 points on the city's roads, twice an hour, at no cost.</p>
+          <nav class="lanes" aria-label="Sections">
+            <a href="#control"><span>The map</span><svg viewBox="0 0 24 30" aria-hidden="true"><path d="M9 0h6v17h7L12 30 2 17h7z"/></svg></a>
+            <a href="#pipeline"><span>The pipeline</span><svg viewBox="0 0 24 30" aria-hidden="true"><path d="M9 0h6v17h7L12 30 2 17h7z"/></svg></a>
+            <a href="#status"><span>Where it stands</span><svg viewBox="0 0 24 30" aria-hidden="true"><path d="M9 0h6v17h7L12 30 2 17h7z"/></svg></a>
+          </nav>
+        </div>
+        <aside class="sign sign--warn" aria-label="About this page">
+          <p class="sign--warn__head">Concept page</p>
+          <p>This page explains the idea. The points on the map are real. The day that plays across them is <strong>simulated</strong>, and no measurements are shown.</p>
+        </aside>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+<section class="room" id="control" aria-labelledby="control-title">
+  <div class="wrap">
+    <div class="room__frame">
+      <div class="room__bar">
+        <h2 id="control-title">Control room: the 52 monitoring points</h2>
+        <p class="hazard"><span>Illustration: simulated values, not measurements</span></p>
+      </div>
+
+      <div class="room__grid">
+        <figure class="screen screen--city">
+          <div class="screen__map" id="map-city"></div>
+          <figcaption>The city. Coastline and corridors are a hand-drawn sketch; the points are exact.</figcaption>
+        </figure>
+
+        <div class="room__side">
+          <div class="room__pair">
+            <figure class="screen screen--region">
+              <div class="screen__map" id="map-region"></div>
+              <figcaption>The wider region.</figcaption>
+            </figure>
+            <figure class="screen screen--centre">
+              <div class="screen__map" id="map-centre"></div>
+              <figcaption>The city centre, enlarged.</figcaption>
+            </figure>
+          </div>
+
+          <div class="readout">
+            <p class="readout__hint" id="readout-hint">Point at, tap or tab to a marker. Arrow keys step through them.</p>
+            <dl class="readout__row" id="readout" aria-live="polite">
+              <div><dt>point_name</dt><dd id="r-name">Select a point</dd></div>
+              <div><dt>category</dt><dd id="r-cat">&nbsp;</dd></div>
+              <div><dt>latitude, longitude</dt><dd id="r-pos">&nbsp;</dd></div>
+              <div class="is-sim"><dt>congestion_ratio <i>simulated</i></dt><dd id="r-ratio">&nbsp;</dd></div>
+              <div class="is-sim"><dt>current / free-flow <i>simulated</i></dt><dd id="r-speed">&nbsp;</dd></div>
+            </dl>
+            <div class="readout__nav">
+              <button type="button" id="prev-point">Previous point</button>
+              <button type="button" id="next-point">Next point</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="deck">
+        <div class="deck__head">
+          <button type="button" class="deck__play" id="play" aria-pressed="false">Play the day</button>
+          <p class="deck__clock"><span id="clock">07:30</span> <abbr title="East Africa Time, UTC+3">EAT</abbr></p>
+          <p class="deck__note">What a day would look like. Two rush hours, drawn by a seeded simulation.</p>
+        </div>
+        <div class="deck__chart" id="profile" aria-hidden="true"></div>
+        <label class="deck__scrub">
+          <span class="visually-hidden">Time of the simulated day</span>
+          <input type="range" id="scrub" min="0" max="47" step="1" value="15">
+        </label>
+        <ul class="legend" aria-label="Legend">
+          <li><svg viewBox="-10 -10 20 20" aria-hidden="true"><circle r="6" class="band-free"/></svg>Free-flowing</li>
+          <li><svg viewBox="-10 -10 20 20" aria-hidden="true"><circle r="7" class="band-slow"/></svg>Slowing</li>
+          <li><svg viewBox="-10 -10 20 20" aria-hidden="true"><circle r="8" class="band-heavy"/></svg>Heavy</li>
+          <li><svg viewBox="-10 -10 20 20" aria-hidden="true"><circle r="9.5" class="band-jam"/></svg>Foleni (jammed)</li>
+          <li class="legend__shape"><svg viewBox="-10 -10 20 20" aria-hidden="true"><circle r="6"/></svg>Highway</li>
+          <li class="legend__shape"><svg viewBox="-10 -10 20 20" aria-hidden="true"><path d="M0-7.5 7.5 6h-15z"/></svg>Main road</li>
+          <li class="legend__shape"><svg viewBox="-10 -10 20 20" aria-hidden="true"><path d="M-5.5-5.5h11v11h-11z"/></svg>City-centre corridor</li>
+        </ul>
+      </div>
+
+      <details class="roll">
+        <summary>List all 52 points by name</summary>
+        <div class="roll__lists" id="roll"></div>
+      </details>
+      <noscript><p class="room__noscript">The map is drawn in your browser and needs JavaScript. Everything below reads without it.</p></noscript>
+    </div>
+  </div>
+</section>
+
+<div class="lane" aria-hidden="true"></div>
+
+<section class="stretch" id="why" aria-labelledby="why-title">
+  <div class="wrap">
+    <header class="dirsign">
+      <span class="shield">DSM</span>
+      <h2 id="why-title">Why Dar es Salaam is hard to measure</h2>
+    </header>
+    <div class="cols">
+      <div class="prose">
+        <p>Dar es Salaam has its own word for a traffic jam: <i lang="sw">foleni</i>. Anyone who has sat on Morogoro Road in the early evening knows the city has them. What is missing is an open, continuous record: which roads, at which hours, how badly, and whether it is getting worse.</p>
+        <p>This project set out to build that record with nothing but free services, a scheduler and a database. The collector is the easy part. The feed is the hard part.</p>
+      </div>
+      <ul class="plates">
+        <li class="plate">
+          <h3>Commercial feeds stop short</h3>
+          <p>Live traffic products are built from phones and vehicles reporting their position. A provider can have the road map of a country without having the traffic layer for it. That is the case for TomTom in Tanzania.</p>
+        </li>
+        <li class="plate">
+          <h3>Counts are surveys, not a series</h3>
+          <p>The University of Dar es Salaam, the World Bank and UN-Habitat have published traffic counts for the city. They describe the days they were taken. They do not run every half hour.</p>
+        </li>
+        <li class="plate">
+          <h3>The budget is zero</h3>
+          <p>The pipeline runs on free tiers that cannot send a bill. When the alternatives were checked in September 2026, HERE and Google Routes both needed a payment card on file, so neither was adopted.</p>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div class="lane" aria-hidden="true"></div>
+
+<section class="stretch" id="pipeline" aria-labelledby="pipeline-title">
+  <div class="wrap">
+    <header class="dirsign">
+      <span class="shield">API</span>
+      <h2 id="pipeline-title">The pipeline, start to finish</h2>
+    </header>
+    <p class="prose prose--lead">One scheduled job, one request per monitoring point, one row per answer. There is no server to keep running.</p>
+
+    <ol class="strip">
+      <li>
+        <h3>Scheduler</h3>
+        <p class="strip__what">GitHub Actions</p>
+        <p>A cron entry asks for a run at 7 and 37 minutes past each hour. GitHub's scheduler is best-effort, so real gaps are longer.</p>
+      </li>
+      <li>
+        <h3>Collector</h3>
+        <p class="strip__what">main.py collect</p>
+        <p>Loads the point list for the chosen city from <code>config/cities/&lt;city&gt;.json</code> and walks it.</p>
+      </li>
+      <li>
+        <h3>Provider</h3>
+        <p class="strip__what">TomTom Traffic Flow</p>
+        <p>One request per coordinate. The answer is the nearest road segment's current speed, free-flow speed, confidence and closure flag.</p>
+      </li>
+      <li>
+        <h3>Parser</h3>
+        <p class="strip__what">parse_traffic_response</p>
+        <p>Works out the congestion ratio, stamps the time in UTC and shapes the result into a row.</p>
+      </li>
+      <li>
+        <h3>Store</h3>
+        <p class="strip__what">Supabase Postgres</p>
+        <p>The cycle's rows go in as one batch over the REST API, into a table called <code>traffic_snapshots</code>.</p>
+      </li>
+    </ol>
+
+    <p class="sliproad"><strong>Slip road:</strong> a second workflow runs weekly. It pushes a heartbeat commit so GitHub does not switch the schedule off after 60 quiet days, re-enables the collector if it was disabled, and fails loudly if no rows have arrived recently.</p>
+  </div>
+</section>
+
+<div class="lane" aria-hidden="true"></div>
+
+<section class="stretch" id="row" aria-labelledby="row-title">
+  <div class="wrap">
+    <header class="dirsign">
+      <span class="shield">0&ndash;1</span>
+      <h2 id="row-title">How a monitoring point becomes a row</h2>
+    </header>
+    <div class="cols cols--wide">
+      <div>
+        <p class="prose">Every answer from the provider is stored as one row with these columns. This is the real schema.</p>
+        <div class="tablewrap" tabindex="0" role="region" aria-label="traffic_snapshots schema">
+          <table class="schema">
+            <thead><tr><th scope="col">Column</th><th scope="col">Type</th><th scope="col">What it holds</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">id</th><td>bigserial</td><td>Row number</td></tr>
+              <tr><th scope="row">timestamp</th><td>text</td><td>When the reading was taken, ISO 8601, UTC</td></tr>
+              <tr><th scope="row">point_name</th><td>text</td><td>The monitoring point, named for its road</td></tr>
+              <tr><th scope="row">latitude</th><td>real</td><td>Where the point is</td></tr>
+              <tr><th scope="row">longitude</th><td>real</td><td>Where the point is</td></tr>
+              <tr><th scope="row">current_speed</th><td>real</td><td>Speed on the segment now, km/h</td></tr>
+              <tr><th scope="row">free_flow_speed</th><td>real</td><td>Speed on the same segment with no traffic, km/h</td></tr>
+              <tr class="is-key"><th scope="row">congestion_ratio</th><td>real</td><td>0 to 1. How much of the free-flow speed has been lost</td></tr>
+              <tr><th scope="row">road_closure</th><td>integer</td><td>1 if the provider reports the road closed, otherwise 0</td></tr>
+              <tr><th scope="row">confidence</th><td>real</td><td>The provider's own 0 to 1 confidence in the reading</td></tr>
+              <tr><th scope="row">created_at</th><td>timestamptz</td><td>When the database received the row</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="ratio">
+        <h3>What the congestion ratio means</h3>
+        <p class="ratio__formula"><span>congestion_ratio</span> = 1 &minus; current_speed &divide; free_flow_speed</p>
+        <p>The result is held between 0 and 1. At 0 the road is moving as fast as it does when empty. At 0.5 traffic is at half that speed. Near 1 it is at a standstill. Dividing by each road's own free-flow speed is what lets a city street and a highway sit on the same scale.</p>
+        <form class="ratio__try" id="ratio-form" onsubmit="return false">
+          <p class="ratio__label">Try it. These sliders are yours; they are not readings.</p>
+          <label for="in-free">Free-flow speed <output id="out-free" for="in-free">60 km/h</output></label>
+          <input type="range" id="in-free" min="20" max="100" step="5" value="60">
+          <label for="in-cur">Current speed <output id="out-cur" for="in-cur">24 km/h</output></label>
+          <input type="range" id="in-cur" min="0" max="110" step="1" value="24">
+          <div class="ratio__meter" aria-hidden="true"><span id="ratio-bar"></span></div>
+          <p class="ratio__result" aria-live="polite"><span id="ratio-value">0.60</span> <span id="ratio-words">Heavy</span></p>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="lane" aria-hidden="true"></div>
+
+<section class="stretch" id="points" aria-labelledby="points-title">
+  <div class="wrap">
+    <header class="dirsign">
+      <span class="shield">OSM</span>
+      <h2 id="points-title">How the 52 points were chosen</h2>
+    </header>
+    <div class="cols">
+      <div class="prose">
+        <p>Coordinates typed by hand land in the wrong place, and the failure is silent. A traffic provider snaps any coordinate to its nearest road and returns a believable speed for it, so a point labelled for an arterial can spend months measuring a side street.</p>
+        <p>So the points are not typed. A generator builds them from OpenStreetMap road geometry, which means every coordinate is a node on the road it is named for.</p>
+        <p class="tally">The Dar es Salaam list holds <b>13</b> city-centre corridor points, <b>17</b> highway points and <b>22</b> main-road points.</p>
+      </div>
+      <ol class="steps">
+        <li><h3>Ask for the roads</h3><p>Query Overpass for every named motorway, trunk, primary and secondary road inside the city's administrative boundary, plus the named streets of the centre.</p></li>
+        <li><h3>Group and measure</h3><p>Join the pieces of each road by name and measure its length inside the city.</p></li>
+        <li><h3>Rank under quotas</h3><p>Rank by road class, then length. Each class has a cap, so long trunk roads on the edge of the region cannot take every slot from the urban arterials.</p></li>
+        <li><h3>Sample along each corridor</h3><p>Place points from the middle of a road outwards, at least 0.5&nbsp;km apart, or 0.3&nbsp;km in the centre where blocks are short. Long arterials get several.</p></li>
+        <li><h3>Check every coordinate</h3><p>Reverse-geocode each point with Nominatim and re-sample any that come back on a different road. Where Nominatim has no name to offer, the point is kept and marked unverified.</p></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<div class="lane" aria-hidden="true"></div>
+
+<section class="stretch" id="uses" aria-labelledby="uses-title">
+  <div class="wrap">
+    <header class="dirsign">
+      <span class="shield">24&thinsp;h</span>
+      <h2 id="uses-title">What the data would let you do</h2>
+    </header>
+    <p class="prose prose--lead">A few weeks of half-hourly rows is enough to start asking questions that today get answered by anecdote. The two charts below use the same simulated day as the map.</p>
+    <ul class="uses">
+      <li class="plate">
+        <h3>Rush-hour profiles</h3>
+        <p>Average the ratio by hour of day and each road gets a signature: when its peak starts, how high it goes, how long it takes to clear.</p>
+        <figure class="mini">
+          <div id="use-profile"></div>
+          <figcaption>Simulated. Mean ratio across all points.</figcaption>
+        </figure>
+      </li>
+      <li class="plate">
+        <h3>Corridor comparison</h3>
+        <p>Put Morogoro, Bagamoyo, Nyerere, Kilwa and Nelson Mandela Road side by side and see which one fills first and which one stays full.</p>
+        <figure class="mini">
+          <div id="use-corridors"></div>
+          <figcaption>Simulated. One strip per corridor, midnight to midnight.</figcaption>
+        </figure>
+      </li>
+      <li class="plate">
+        <h3>Rain effects</h3>
+        <p>Join each row to the rainfall in that hour and ask how much a downpour slows each road, and which roads it stops altogether.</p>
+        <p class="plate__tag">Planned. The weather collector has not been built.</p>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<div class="chevrons" aria-hidden="true"></div>
+
+<section class="stretch stretch--status" id="status" aria-labelledby="status-title">
+  <div class="wrap">
+    <header class="dirsign dirsign--warn">
+      <span class="shield">NBO</span>
+      <h2 id="status-title">Where it stands: diversion via Nairobi</h2>
+    </header>
+    <div class="cols">
+      <div class="prose">
+        <p>TomTom has the road map of Dar es Salaam and no traffic data for it. Asked about any of the monitoring points, it gives the same reply:</p>
+        <p class="reply"><code>Point too far from nearest existing segment.</code></p>
+        <p>The same collector, with the same key, gets readings for Nairobi. So that is where it runs. The pipeline has been proven end to end on a neighbouring city, and the Dar es Salaam point list is ready for the day a source exists.</p>
+        <p>Switching back is one setting: the city name.</p>
+      </div>
+      <div>
+        <h3 class="unlock__title">What would unlock Dar es Salaam</h3>
+        <ul class="unlock">
+          <li>
+            <h4>Another provider</h4>
+            <p>The collector is the seam: a new one only has to map its answer onto the same row. A <code>check-coverage</code> command probes a provider before anything is built on it.</p>
+          </li>
+          <li class="unlock__dala">
+            <span class="dala" aria-hidden="true"></span>
+            <h4>Daladala GPS traces</h4>
+            <p>The city's minibuses, each painted with a colour band for its route, drive the main corridors all day. Position traces from a fleet would give speeds with no outside provider at all.</p>
+          </li>
+          <li>
+            <h4>Academic counts</h4>
+            <p>Published counts from the university and development agencies could seed a baseline to check any live source against.</p>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="end">
+  <div class="wrap">
+    <p class="end__bye" lang="sw">Safari njema.</p>
+    <p class="end__links">
+      <a href="https://github.com/NathanKagoro/Dar-Traffic-Monitoring">Source on GitHub</a>
+      <a href="https://github.com/NathanKagoro/Dar-Traffic-Monitoring/blob/main/docs/provider-coverage.md">Provider coverage notes</a>
+      <a href="https://nathankagoro.com">&larr; nathankagoro.com</a>
+    </p>
+    <p class="end__small">Monitoring point coordinates derive from OpenStreetMap, &copy; OpenStreetMap contributors. The coastline is a simplified sketch and is not to be navigated by. Set in Overpass and Overpass Mono, SIL Open Font Licence. No trackers and no outside requests.</p>
+  </div>
+</footer>
+</body>
+</html>

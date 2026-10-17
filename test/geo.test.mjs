@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 
 import { POINTS } from '../site/js/points.js';
 import {
-  REGION_BOUNDS, CENTRE_BOUNDS, LAND, CORRIDORS, BRIDGE, PLACES,
-  makeProjection, inBounds, pointInPolygon, isOverWater,
+  REGION_BOUNDS, CITY_BOUNDS, CENTRE_BOUNDS, LAND, CORRIDORS, BRIDGE, PLACES,
+  makeProjection, inBounds, pointInPolygon, isOverWater, homeView,
 } from '../site/js/geo.js';
 
 test('projection maps the bounds corners to the box corners', () => {
@@ -88,11 +88,33 @@ test('corridor lines pass through the monitoring points named for them', () => {
   }
 });
 
-test('corridors and labels stay inside the map', () => {
+test('corridors and labels stay inside their maps', () => {
+  const views = { region: REGION_BOUNDS, city: CITY_BOUNDS, centre: CENTRE_BOUNDS };
   const pad = [REGION_BOUNDS[0] - 0.01, REGION_BOUNDS[1] - 0.01, REGION_BOUNDS[2] + 0.01, REGION_BOUNDS[3] + 0.01];
   for (const corridor of CORRIDORS) {
     for (const [lon, lat] of corridor.line) assert.ok(inBounds(pad, lon, lat), corridor.name);
-    assert.ok(inBounds(REGION_BOUNDS, ...corridor.label), `${corridor.name} label`);
+    for (const [view, [lon, lat]] of Object.entries(corridor.labels)) {
+      assert.ok(inBounds(views[view], lon, lat), `${corridor.name} label on ${view}`);
+    }
   }
-  for (const place of PLACES) assert.ok(inBounds(REGION_BOUNDS, ...place.at), place.name);
+  for (const [view, places] of Object.entries(PLACES)) {
+    for (const [name, lon, lat, kind] of places) {
+      assert.ok(inBounds(views[view], lon, lat), `${name} on ${view}`);
+      assert.equal(pointInPolygon(lon, lat, LAND), kind === 'land', `${name} is ${kind}`);
+    }
+  }
+});
+
+test('the three views nest: centre inside city inside region', () => {
+  const inside = (inner, outer) =>
+    inner[0] > outer[0] && inner[1] > outer[1] && inner[2] < outer[2] && inner[3] < outer[3];
+  assert.ok(inside(CENTRE_BOUNDS, CITY_BOUNDS));
+  assert.ok(inside(CITY_BOUNDS, REGION_BOUNDS));
+});
+
+test('every point has exactly one home view and no view is empty', () => {
+  const counts = { centre: 0, city: 0, region: 0 };
+  for (const point of POINTS) counts[homeView(point.lon, point.lat)] += 1;
+  assert.equal(counts.centre + counts.city + counts.region, POINTS.length);
+  for (const [view, count] of Object.entries(counts)) assert.ok(count >= 5, `${view}: ${count}`);
 });
