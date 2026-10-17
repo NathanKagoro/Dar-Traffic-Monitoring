@@ -49,9 +49,27 @@ function watchScale(node, units) {
     const width = node.clientWidth || node.getBoundingClientRect().width;
     if (!width) return;
     node.style.setProperty('--k', Math.min(3, Math.max(0.45, units / width)).toFixed(3));
+    window.requestAnimationFrame(() => keepLabelsInside(node, units));
   };
   apply();
   if ('ResizeObserver' in window) new ResizeObserver(apply).observe(node);
+}
+
+// Labels keep a constant size on screen, so on a narrow map a label placed
+// near an edge can run off it. Nudge any that do back inside.
+function keepLabelsInside(node, units) {
+  const height = node.viewBox.baseVal.height;
+  for (const text of node.querySelectorAll('text.k-text')) {
+    text.removeAttribute('dx');
+    text.removeAttribute('dy');
+    let box;
+    try { box = text.getBBox(); } catch { continue; }
+    if (!box.width) continue;
+    const dx = box.x < 3 ? 3 - box.x : box.x + box.width > units - 3 ? units - 3 - box.x - box.width : 0;
+    const dy = box.y < 3 ? 3 - box.y : box.y + box.height > height - 2 ? height - 2 - box.y - box.height : 0;
+    if (dx) text.setAttribute('dx', dx.toFixed(1));
+    if (dy) text.setAttribute('dy', dy.toFixed(1));
+  }
 }
 
 /* ---------- maps ---------- */
@@ -76,14 +94,10 @@ function buildMap(host, { bounds, width, kind, label }) {
     for (let lon = 39.0; lon < east; lon += 0.1) {
       const [x] = proj.project(lon, north);
       svg('line', { class: 'm-grat', x1: fmt(x), y1: 0, x2: fmt(x), y2: fmt(proj.height) }, grat);
-      const t = svg('text', { class: 'm-grat-label k-text', x: fmt(x + 4), y: fmt(proj.height - 6) }, grat);
-      t.textContent = `${lon.toFixed(1)}°E`;
     }
     for (let lat = -6.7; lat > south; lat -= 0.1) {
       const [, y] = proj.project(west, lat);
       svg('line', { class: 'm-grat', x1: 0, y1: fmt(y), x2: width, y2: fmt(y) }, grat);
-      const t = svg('text', { class: 'm-grat-label k-text', x: fmt(width - 4), y: fmt(y - 5), 'text-anchor': 'end' }, grat);
-      t.textContent = `${Math.abs(lat).toFixed(1)}°S`;
     }
   }
 
@@ -99,7 +113,7 @@ function buildMap(host, { bounds, width, kind, label }) {
     const [x0, y0] = proj.project(inner[0], inner[3]);
     const [x1, y1] = proj.project(inner[2], inner[1]);
     svg('rect', { class: 'm-box', x: fmt(x0), y: fmt(y0), width: fmt(x1 - x0), height: fmt(y1 - y0) }, labels);
-    const t = svg('text', { class: 'm-box-label k-text', x: fmt(x0), y: fmt(y0 - 6) }, labels);
+    const t = svg('text', { class: 'm-box-label k-text', x: fmt(x0), y: fmt(y1 + 4), 'dominant-baseline': 'hanging' }, labels);
     t.textContent = name;
   };
   if (kind === 'region') box(CITY_BOUNDS, 'City');

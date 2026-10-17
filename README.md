@@ -1,8 +1,46 @@
 # Dar es Salaam Traffic Monitoring System
 
+**Concept page: https://nathankagoro.github.io/Dar-Traffic-Monitoring/**
+
 A lightweight, Python-based traffic data collection pipeline for East African
 urban monitoring. Collects traffic data from the TomTom API for 52 strategic
-monitoring points every 30 minutes.
+monitoring points, scheduled every 30 minutes. GitHub's scheduler is
+best-effort, so the real interval between runs is longer and uneven.
+
+## The concept page
+
+`site/` is a static page that explains the project: the question it asks, why
+Dar es Salaam traffic data is hard to get, the pipeline, how a monitoring point
+becomes a row, how the points were chosen and what the data would allow. It is
+published to GitHub Pages by `.github/workflows/pages.yml`.
+
+What is real and what is illustrative:
+
+- **Real:** the 52 Dar es Salaam monitoring points (names, coordinates and
+  categories, generated into `site/js/points.js` from
+  `config/cities/dar_es_salaam.json`), the database schema, the congestion-ratio
+  formula and the pipeline it describes.
+- **Illustrative:** the coastline and corridor lines on the map are a
+  hand-drawn sketch, and the 24-hour congestion day that plays across the
+  points is a seeded simulation (`site/js/sim.js`). The page labels it as
+  simulated. It shows no collected data or collection statistics.
+
+```bash
+npm run build   # regenerate site/js/points.js from the city config
+npm test        # node --test: simulation, map geometry, point data (no dependencies)
+npm run serve   # http://127.0.0.1:4320/Dar-Traffic-Monitoring/
+```
+
+The Python tests cover the response parser and congestion ratio, with no
+network or credentials:
+
+```bash
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+`.github/workflows/ci.yml` runs both test suites and takes screenshots of the
+page on every push and pull request. It uses no secrets.
 
 **Target city: Dar es Salaam, Tanzania.** The collector reads
 `config/cities/<CITY>.json`, so switching city is a one-line change; a Nairobi
@@ -49,8 +87,11 @@ point list is kept alongside for comparison and as a fallback.
 **Phase 1 (Current Implementation)**
 - **Collection**: TomTom Traffic Flow API queries
 - **Storage**: Supabase PostgreSQL (free tier)
-- **Scheduling**: GitHub Actions (runs every 30 minutes)
-- **Dependencies**: Minimal (`requests`, `psycopg2`, `pandas`)
+- **Scheduling**: GitHub Actions (scheduled every 30 minutes; GitHub's scheduler
+  is best-effort, so real gaps are longer)
+- **Dependencies**: Minimal (`requests`, `python-dotenv`). The database is
+  reached through Supabase's REST API with `requests`; there is no Postgres
+  driver.
 
 **Data Pipeline**
 ```
@@ -143,7 +184,9 @@ git commit -m "Initial traffic monitoring setup"
 git push origin main
 ```
 
-Collection will start automatically every 30 minutes. Monitor runs in:
+Collection will start automatically on the 30-minute schedule (GitHub runs
+scheduled workflows on a best-effort basis, so expect longer and uneven gaps).
+Monitor runs in:
 **Actions** tab → **Collect Traffic Data** workflow
 
 ## Monitoring Points
@@ -193,7 +236,8 @@ coordinates were nowhere near the road they were named for. Use it as
 - `university`: University routes
 - `healthcare`: Hospital access roads
 
-Configured in `config/monitored_points.json`
+Configured in `config/cities/<city>.json`, selected by the `CITY` environment
+variable (default in `config/city_specs.py`).
 
 ## Database Schema
 
@@ -260,7 +304,9 @@ collection in July 2026, 60 days after the last commit on 2026-05-10.
 2. Calls the Actions API to re-enable `collect-traffic.yml`, so the pipeline
    recovers by itself if it is ever disabled anyway.
 3. Runs `python main.py healthcheck`, which **fails the job** if no new rows
-   have landed in 6 hours — turning a silent death into a notification.
+   have landed in 12 hours — turning a silent death into a notification. (It
+   was 6 hours, but scheduled runs are routinely further apart than that, so
+   the alarm fired on a healthy pipeline.)
 
 If collection has already stopped, restarting it takes both of these:
 
@@ -542,8 +588,9 @@ dar-traffic-monitoring/
 │   ├── settings.py              # Configuration (API keys, paths, CITY)
 │   ├── city_specs.py            # Per-city boundaries, CBD boxes, centres
 │   └── cities/
-│       ├── dar_es_salaam.json   # 52 monitoring locations (default)
-│       └── nairobi.json         # 52 monitoring locations
+│       ├── dar_es_salaam.json   # 52 monitoring locations (the target city)
+│       ├── nairobi.json         # 52 monitoring locations (collected by default)
+│       └── nairobi_legacy.json  # original list, kept for auditing only
 ├── collectors/
 │   └── tomtom_collector.py      # TomTom API integration
 ├── database/
@@ -558,11 +605,16 @@ dar-traffic-monitoring/
 │   ├── coverage.py              # Does the provider have data for these points?
 │   ├── validate_points.py       # Checks coordinates against OpenStreetMap
 │   └── generate_points.py       # Builds the point list from OSM geometry
-├── notebooks/                   # Jupyter notebooks for analysis
 ├── .github/workflows/
 │   ├── collect-traffic.yml      # GitHub Actions scheduler
 │   ├── keepalive.yml            # Prevents the 60-day auto-disable
-│   └── diagnostics.yml          # Manual: run checks using the repo secrets
+│   ├── diagnostics.yml          # Manual: run checks using the repo secrets
+│   ├── ci.yml                   # Tests and screenshots, no secrets
+│   └── pages.yml                # Publishes site/ to GitHub Pages
+├── site/                        # The concept page (static)
+├── test/                        # Node tests for the page's logic
+├── tests/                       # pytest tests for the response parser
+├── tools/                       # Point-data build script, local server
 ├── main.py                      # Entry point (collect/init/audit/healthcheck/
 │                                #   validate-points/check-coverage)
 ├── requirements.txt             # Python dependencies
@@ -572,7 +624,9 @@ dar-traffic-monitoring/
 ## Security
 
 - **API Keys**: Stored as GitHub repository secrets, never in code
-- **Database**: Supabase enforces column-level security
+- **Database**: The collector uses the Supabase service-role key, which
+  bypasses row-level security, so the key must stay secret (a repository
+  secret or a local `.env`, never in code)
 - **Public Repository**: Safe (no credentials exposed)
 - **Best Practice**: Rotate keys periodically via Supabase/TomTom dashboards
 

@@ -87,7 +87,7 @@ export const LAND = [...COAST, [38.9, -7.2], [38.9, -6.64]];
 export const CORRIDORS = [
   {
     name: 'Morogoro Road',
-    labels: { region: [39.09, -6.768, 'middle'], city: [39.245, -6.8075, 'middle'] },
+    labels: { region: [39.09, -6.752, 'middle'], city: [39.245, -6.8075, 'middle'] },
     line: [
       [39.2835, -6.8175], [39.2688, -6.81201], [39.255, -6.805], [39.215, -6.789],
       [39.17317, -6.78683], [39.13313, -6.79093], [39.08338, -6.79584], [39.03768, -6.79163],
@@ -145,7 +145,7 @@ export const PLACES = {
     ['Kigamboni', 39.327, -6.846, 'land', 'middle'],
   ],
   centre: [
-    ['Harbour', 39.2962, -6.8292, 'water', 'middle'],
+    ['Harbour', 39.2971, -6.8292, 'water', 'end'],
     ['Ocean', 39.2938, -6.8015, 'water', 'middle'],
   ],
 };
